@@ -85,23 +85,20 @@ import { debug, info, warn, error } from '../utils/logger.js';
 
   const startExtraction = async () => {
     debug("🚀 startExtraction() called.");
-    window.extractionPaused = false;
-    debug("startExtraction: extractionPaused flag set to false.")
-    
+    // Do not unconditionally clear the pause flag.
+    if (window.extractionPaused) {
+      debug("Extraction is currently paused. Not starting extraction cycle.");
+      return;
+    }
     try {
       await getTotalFollowers();
-      debug("startExtraction: Total followers detected:", totalFollowerCount);
       if (totalFollowerCount === 0) {
-        error("startExtraction: Total follower count is zero. Aborting.");
+        error("❌ Total follower count is zero. Aborting.");
         return;
       }
-      if (!openFollowersModal()) {
-        error("startExtraction: openFollowersModal failed.");
-        return;
-      }
+      if (!openFollowersModal()) return;
       await waitForElement(MODAL_SELECTOR, 15000);
-      debug("startExtraction: Followers modal detected. Starting continuousScrollCycle...");
-  
+      debug("✅ Followers modal detected. Now starting continuousScrollCycle...");
       continuousScrollCycle(
         SCROLL_CONTAINER_SELECTOR,
         FOLLOWER_SELECTOR,
@@ -111,11 +108,7 @@ import { debug, info, warn, error } from '../utils/logger.js';
             action: "updateProgress",
             data: { current: extractedCount, total: totalFollowerCount }
           }, (response) => {
-            if (chrome.runtime.lastError) {
-              error("❌ Message failed (updateProgress):", chrome.runtime.lastError);
-            } else {
-              debug("✅ Background response to updateProgress:", response);
-            }
+            debug("✅ Background response to updateProgress:", response);
           });
           debug(`📊 Progress update sent: ${extractedCount} / ${totalFollowerCount}`);
         },
@@ -161,14 +154,12 @@ import { debug, info, warn, error } from '../utils/logger.js';
         debug("Action 'startExtraction' received.");
         startExtraction();
         sendResponse({ status: "extraction started" });
-        debug("Response 'extraction started' sent.");
         return true;
       } else if (message.action === "pauseExtraction") {
         debug("Action 'pauseExtraction' received.");
         window.extractionPaused = true;
         debug("Extraction paused.");
         sendResponse({ status: "extraction paused" });
-        debug("Response 'extraction paused' sent.");
         return true;
       } else if (message.action === "resumeExtraction") {
         debug("Action 'resumeExtraction' received.");
@@ -184,13 +175,9 @@ import { debug, info, warn, error } from '../utils/logger.js';
                 action: "updateProgress",
                 data: { current: extractedCount, total: totalFollowerCount }
               }, (response) => {
-                if (chrome.runtime.lastError) {
-                  error("❌ Message failed (updateProgress):", chrome.runtime.lastError);
-                } else {
-                  debug("✅ Background response to updateProgress:", response);
-                }
+                debug("✅ Background response to updateProgress:", response);
               });
-              debug(`Progress update sent: ${extractedCount} / ${totalFollowerCount}`);
+              debug(`📊 Progress update sent: ${extractedCount} / ${totalFollowerCount}`);
             },
             totalFollowerCount
           );
