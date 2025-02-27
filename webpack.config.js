@@ -88,10 +88,10 @@ module.exports = {
       chunks: ['popup']
     }),
 
-    // Generate options.html with the options bundle injected
+    // Generate inline.html with the inline bundle injected
     new HtmlWebpackPlugin({
-      filename: 'options.html',
-      template: 'public/options.html',
+      filename: 'inline.html',
+      template: 'public/inline.html',
       chunks: ['options']
     }),
 

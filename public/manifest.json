@@ -40,14 +40,10 @@
     "tabs", 
     "downloads" 
   ],
-  "options_ui": {
-    "page": "options.html",
-    "open_in_tab": true
-  },
-  "web_accessible_resources": [
-    {
-      "matches": ["*://*.instagram.com/*"],
-      "resources": ["icons/logo_128.png"]
-    }
-  ]
+"web_accessible_resources": [
+  {
+    "resources": ["inline.html", "inline.js", "options.js", "icons/logo_128.png"],
+    "matches": ["*://*.instagram.com/*"]
+  }
+]
 }

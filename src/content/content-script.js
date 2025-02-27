@@ -1,6 +1,48 @@
 import { waitForElement, continuousScrollCycle, extractFollowers } from '../utils/extractionUtils.js';
 import { debug, info, warn, error } from '../utils/logger.js';
 
+function createInjectionContainer() {
+  const container = document.createElement('div');
+  container.id = 'my-extension-options-container';
+  container.style.position = 'fixed';
+  container.style.top = '0';
+  container.style.right = '0';
+  container.style.width = '400px';
+  container.style.height = '100%';
+  container.style.zIndex = '9999';
+  container.style.backgroundColor = '#fff';
+  container.style.border = '1px solid #ccc';
+  container.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+  document.body.appendChild(container);
+  return container;
+}
+
+function injectIframe() {
+  const container = document.getElementById('my-extension-options-container');
+  if (!container) {
+    console.error('Container not found. Aborting iframe injection.');
+    return;
+  }
+  const iframe = document.createElement('iframe');
+  iframe.src = chrome.runtime.getURL('inline.html');
+  iframe.style.width = '100%';
+  iframe.style.height = '100%';
+  iframe.style.border = 'none';
+  iframe.style.backgroundColor = '#ffffff';
+  container.appendChild(iframe);
+}
+
+// Make sure we call BOTH functions
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    createInjectionContainer();
+    injectIframe();
+  });
+} else {
+  createInjectionContainer();
+  injectIframe();
+}
+
 (() => {
   "use strict";
 

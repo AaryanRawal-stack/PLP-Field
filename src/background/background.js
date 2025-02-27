@@ -46,11 +46,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             debug("✅ instagramTabId stored:", tabId);
           });
-
-          // **Ensure the Options Page Opens Automatically**
-          chrome.runtime.openOptionsPage();
-          debug("✅ Options page opened automatically.");
-
+          
           sendResponse({ code: 200, data: { status: "Navigation initiated" } });
         });
       });
