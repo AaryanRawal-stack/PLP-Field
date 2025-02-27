@@ -59,25 +59,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     },
 
     contentScriptLoaded: (message, sender, sendResponse) => {
-      debug("📩 Content script reported readiness. Sending 'startExtraction'.");
-
-      chrome.storage.local.get(["instagramTabId"], (result) => {
+      debug("📩 Content script reported readiness. Checking pause state...");
+      chrome.storage.local.get(["instagramTabId", "extractionPaused"], (result) => {
         const tabId = result.instagramTabId;
+        const paused = result.extractionPaused;
         if (!tabId) {
           error("❌ No stored instagramTabId found. Cannot send 'startExtraction'.");
           sendResponse({ code: 500, data: { error: "No tab ID found" } });
           return true;
         }
-
+        if (paused) {
+          debug("Extraction is currently paused. Not sending startExtraction.");
+          sendResponse({ code: 200, data: { status: "extraction is paused" } });
+          return;
+        }
         debug("✅ Sending 'startExtraction' command to tab:", tabId);
         chrome.tabs.sendMessage(tabId, { action: "startExtraction" }, (response) => {
           debug("📩 'startExtraction' response from content script:", response);
           sendResponse({ code: 200, data: { status: "Extraction started" } });
         });
       });
-
       return true;
-    },
+    }
+    ,
 
     pauseExtraction: (message, sender, sendResponse) => {
       debug("⏸️ Handling 'pauseExtraction' action.");
