@@ -151,29 +151,16 @@ npm run serve
 
 ## Known Issues and Limitations
 
-- **CSV Export:**  
-  The CSV export functionality may encounter issues and is still under active development. Further debugging is required.
-- **Anti-Scraping Measures:**  
-  Instagram’s anti-scraping techniques (e.g., non-JSON responses with anti-scraping prefixes) may sometimes interfere with data extraction. Our current fallback strategy helps mitigate this, but improvements are ongoing.
 - **Rate Limiting:**  
   Although extraction is rate-limited, excessive requests may still lead to temporary blocks by Instagram. Adjust settings as needed.
-- **Data Accuracy:**  
-  API endpoints may not always return consistent or complete data due to changes in Instagram’s API or account-specific restrictions.
-- **Fallback Reliability:**  
-  While the fallback to the internal API provides an additional attempt to retrieve data, it may also fail or require modifications (e.g., updated App IDs or headers) in the future.
-- **Production Considerations:**  
-  In production, additional error handling, logging, and retry logic should be implemented to ensure robust operation. The current integration serves as a starting point and may need further enhancements based on real-world usage.
 
 ## Future Enhancements
 
 - **Refine API Integration:**  
   Improve error handling and fallback logic for more robust extraction.
-- **Enhanced User Feedback:**  
-  Provide better error notifications when extraction fails due to rate limits or API changes.
-- **UI/UX Improvements:**  
-  Enhance the overall look and usability of both popup and options pages.
 - **Expanded CSV Fields:**  
   Include additional data fields (like a fully implemented "Parent Account") in the export.
+-**Allow for cleared history:**
 
 ## License
 
