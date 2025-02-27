@@ -85,38 +85,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     pauseExtraction: (message, sender, sendResponse) => {
       debug("⏸️ Handling 'pauseExtraction' action.");
-      
+    
       chrome.storage.local.set({ extractionPaused: true }, () => {
-          if (chrome.runtime.lastError) {
-              error("❌ Failed to pause extraction:", chrome.runtime.lastError);
-              sendResponse({ code: 500, data: { error: chrome.runtime.lastError.message } });
-              return;
+        if (chrome.runtime.lastError) {
+          error("❌ Failed to pause extraction:", chrome.runtime.lastError);
+          sendResponse({ code: 500, data: { error: chrome.runtime.lastError.message } });
+          return;
+        }
+    
+        // Forward the pause message to the content script.
+        chrome.storage.local.get(["instagramTabId"], (result) => {
+          const tabId = result.instagramTabId;
+          if (tabId) {
+            chrome.tabs.sendMessage(tabId, { action: "pauseExtraction" }, (response) => {
+              debug("PauseExtraction message forwarded to content script, response:", response);
+            });
           }
-  
-          debug("✅ Extraction paused.");
-          sendResponse({ code: 200, data: { status: "paused" } });
+        });
+    
+        debug("✅ Extraction paused.");
+        sendResponse({ code: 200, data: { status: "paused" } });
       });
-  
-      return true; // Required for async sendResponse to work
+    
+      return true;
     },
+    
   
     resumeExtraction: (message, sender, sendResponse) => {
       debug("▶️ Handling 'resumeExtraction' action.");
-  
+    
       chrome.storage.local.set({ extractionPaused: false }, () => {
-          if (chrome.runtime.lastError) {
-              error("❌ Failed to resume extraction:", chrome.runtime.lastError);
-              sendResponse({ code: 500, data: { error: chrome.runtime.lastError.message } });
-              return;
+        if (chrome.runtime.lastError) {
+          error("❌ Failed to resume extraction:", chrome.runtime.lastError);
+          sendResponse({ code: 500, data: { error: chrome.runtime.lastError.message } });
+          return;
+        }
+    
+        // Forward the resume message to the content script.
+        chrome.storage.local.get(["instagramTabId"], (result) => {
+          const tabId = result.instagramTabId;
+          if (tabId) {
+            chrome.tabs.sendMessage(tabId, { action: "resumeExtraction" }, (response) => {
+              debug("ResumeExtraction message forwarded to content script, response:", response);
+            });
           }
-  
-          debug("✅ Extraction resumed.");
-          sendResponse({ code: 200, data: { status: "resumed" } });
+        });
+    
+        debug("✅ Extraction resumed.");
+        sendResponse({ code: 200, data: { status: "resumed" } });
       });
-  
+    
       return true; // Required for async sendResponse to work
-    },
-  
+    },    
+
 
     exportCSV: (message, sendResponse) => {
       debug("📤 Handling 'exportCSV' action...");
@@ -182,27 +203,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     export_followers: (message, sendResponse) => {
       debug("📩 Received 'export_followers' message from content script.");
       const extractedFollowers = message.data || [];
-
+    
       debug("🔍 Extracted Followers Received:", extractedFollowers);
-
+    
       if (!extractedFollowers.length) {
         warn("⚠️ No followers received from content script.");
         sendResponse({ code: 400, data: { error: "No followers received" } });
         return true;
       }
-
+    
       chrome.storage.local.get(["exportedFollowers"], (result) => {
         debug("📦 Retrieved existing followers from storage:", result.exportedFollowers);
-
+    
         let existingFollowers = result.exportedFollowers || [];
-
+    
         // Deduplicate using a Map
         const followersMap = new Map();
         existingFollowers.forEach(f => followersMap.set(f.username, f));
         extractedFollowers.forEach(f => followersMap.set(f.username, f));
-
+    
         const updatedFollowers = Array.from(followersMap.values());
-
+    
         chrome.storage.local.set({ exportedFollowers: updatedFollowers }, () => {
           if (chrome.runtime.lastError) {
             error("❌ Failed to store followers:", chrome.runtime.lastError);
@@ -212,10 +233,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ code: 200, data: { export_status: "success", count: updatedFollowers.length } });
           }
         });
-      });
+      
+        return true;
+      }); // <-- Added closing parenthesis here
+    
+    }, // <-- Comma to separate from the next property    
 
+    stopExtraction: (message, sender, sendResponse) => {
+      debug("⏹ Handling 'stopExtraction' action.");
+      chrome.storage.local.get(["instagramTabId"], (result) => {
+        const tabId = result.instagramTabId;
+        if (tabId) {
+          chrome.tabs.remove(tabId, () => {
+            debug("Instagram extraction tab closed.");
+          });
+        }
+        // Clear all extraction-related storage keys
+        chrome.storage.local.remove(
+          ["instagramTabId", "exportedFollowers", "extractionPaused", "currentTargetAccount"],
+          () => {
+            debug("Extraction data cleared.");
+            sendResponse({ status: "extraction stopped" });
+          }
+        );
+      });
+    
       return true;
-    },
+    },    
 
     updateProgress: (message, sendResponse) => {
       debug("🔄 Handling 'updateProgress' action:", message.data);

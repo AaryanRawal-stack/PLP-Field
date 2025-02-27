@@ -34,6 +34,16 @@
         <button class="export-button-left" @click="exportCsvData" :disabled="followers.length === 0">
           {{ followers.length === 0 ? "Followers not ready for export yet" : "Export CSV" }}
         </button>
+        <div class="reset-section">
+          <button @click="handleReset">{{ resetButtonText }}</button>
+          <input 
+            v-if="showConfirmInput" 
+            v-model="confirmInput"
+            placeholder="Type RESET to confirm"
+            class="confirm-input"
+          />
+          <p class="reset-message">{{ resetMessage }}</p>
+        </div>
       </div>
     </div>
   </div>
@@ -48,6 +58,11 @@ export default {
     return {
       currentTargetAccount: '',
       isPaused: false,
+      showConfirmInput: false,
+      confirmInput: "",
+      resetMessage: "",
+      resetButtonText: "End/Reset",
+      
     };
   },
   computed: {
@@ -105,47 +120,73 @@ export default {
         });
     },
     fetchCurrentTargetAccount() {
+      // Note: Corrected "ge.local.get" to "chrome.storage.local.get"
       chrome.storage.local.get(["currentTargetAccount", "extractionPaused"], (result) => {
         this.currentTargetAccount = result.currentTargetAccount || '';
         this.isPaused = result.extractionPaused || false;
         debug("[OptionsPage] Retrieved currentTargetAccount and pause status from storage:", this.currentTargetAccount, this.isPaused);
       });
-    }
+    },
+    handleReset() {
+      if (!this.showConfirmInput) {
+        // First click: Show input field and ask for confirmation.
+        this.showConfirmInput = true;
+        this.resetMessage = `Resetting stops extraction and clears all stored data. Please save your progress using the Export CSV button before proceeding. Are you sure you want to continue? This cannot be undone. Type in "Reset" to confirm.`;
+        this.resetButtonText = "Confirm Reset";
+      } else {
+        // Second click: Validate the confirmation input.
+        if (this.confirmInput.trim() === "Reset") {
+          // Instead of clearing all storage immediately, send the stopExtraction message
+          chrome.runtime.sendMessage({ action: "stopExtraction" }, (response) => {
+            // Optionally, you can clear additional keys if needed here
+            // chrome.storage.local.remove(["currentTargetAccount", "extractionPaused"], () => {});
+            this.resetMessage = "✅ Reset complete. To extract another account, click on the extension.";
+            this.showConfirmInput = false;
+            this.confirmInput = "";
+            this.resetButtonText = "End/Reset";
+          });
+        } else {
+          // If the input is not exactly "Reset", show an error message.
+          this.resetMessage = "❌ Reset failed. You must type 'Reset' exactly.";
+          this.confirmInput = "";
+        }
+      }
+    },
   },
   mounted() {
-  debug("[OptionsPage] Component mounted.");
-  this.fetchCurrentTargetAccount();
-  this.$store.dispatch('fetchFollowers'); // Fetch initial followers from storage
+    debug("[OptionsPage] Component mounted.");
+    this.fetchCurrentTargetAccount();
+    this.$store.dispatch('fetchFollowers'); // Fetch initial followers from storage
 
-  // Listen for changes in chrome.storage to update the followers list reactively.
-  chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === "local" && changes.exportedFollowers) {
-      const newFollowers = changes.exportedFollowers.newValue || [];
-      this.$store.commit('setFollowers', newFollowers);
-      this.$store.commit('setFoundProfiles', newFollowers.length);
-      debug("[OptionsPage] Updated followers from storage change:", newFollowers.length);
-    }
-  });
-
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'updateProgress') {
-      debug("[OptionsPage] Received updateProgress message:", request.data);
-      if (this.$store.dispatch) {
-        this.$store.dispatch('updateProgressAction', request.data)
-          .catch(err => error("[OptionsPage] updateProgress dispatch error:", err));
-      } else {
-        error("[OptionsPage] Vuex store dispatch is undefined.");
+    // Listen for changes in chrome.storage to update the followers list reactively.
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === "local" && changes.exportedFollowers) {
+        const newFollowers = changes.exportedFollowers.newValue || [];
+        this.$store.commit('setFollowers', newFollowers);
+        this.$store.commit('setFoundProfiles', newFollowers.length);
+        debug("[OptionsPage] Updated followers from storage change:", newFollowers.length);
       }
-    }
+    });
 
-    if (request.action === 'updatePausedStatus') {
-      this.isPaused = request.data.isPaused;
-    }
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request.action === 'updateProgress') {
+        debug("[OptionsPage] Received updateProgress message:", request.data);
+        if (this.$store.dispatch) {
+          this.$store.dispatch('updateProgressAction', request.data)
+            .catch(err => error("[OptionsPage] updateProgress dispatch error:", err));
+        } else {
+          error("[OptionsPage] Vuex store dispatch is undefined.");
+        }
+      }
 
-    sendResponse({ status: "message received" });
-    return true;
-  });
-}
+      if (request.action === 'updatePausedStatus') {
+        this.isPaused = request.data.isPaused;
+      }
+
+      sendResponse({ status: "message received" });
+      return true;
+    });
+  }
 };
 </script>
 
@@ -162,4 +203,21 @@ export default {
 .option-button, .export-button-left { padding: 10px 15px; border-radius: 5px; border: none; color: white; background-color: #007bff; cursor: pointer; }
 .export-button-left { background-color: #28a745; }
 .option-button:hover, .export-button-left:hover { background-color: #0056b3; }
+.reset-section {
+  margin-top: 20px;
+  text-align: center;
+}
+.confirm-input {
+  margin-top: 10px;
+  padding: 5px;
+  border: 2px solid red;
+  font-weight: bold;
+  text-transform: uppercase;
+  text-align: center;
+}
+.reset-message {
+  color: red;
+  font-weight: bold;
+  margin-top: 10px;
+}
 </style>

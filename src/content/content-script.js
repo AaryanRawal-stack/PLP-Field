@@ -59,9 +59,15 @@ import { debug, info, warn, error } from '../utils/logger.js';
     }
   };
 
+  // Updated to check extractionPaused before sending updates.
   const updateUserWithFollowers = async (followers) => {
     if (!followers || followers.length === 0) {
       debug("❌ No new followers extracted; skipping update.");
+      return;
+    }
+
+    if (window.extractionPaused) {
+      debug("Extraction has been stopped. Skipping update.");
       return;
     }
 
@@ -85,9 +91,9 @@ import { debug, info, warn, error } from '../utils/logger.js';
 
   const startExtraction = async () => {
     debug("🚀 startExtraction() called.");
-    // Do not unconditionally clear the pause flag.
+    // If extraction has been paused/stopped, do not restart.
     if (window.extractionPaused) {
-      debug("Extraction is currently paused. Not starting extraction cycle.");
+      debug("Extraction is currently paused or stopped. Not starting extraction cycle.");
       return;
     }
     try {
@@ -171,13 +177,16 @@ import { debug, info, warn, error } from '../utils/logger.js';
             FOLLOWER_SELECTOR,
             updateUserWithFollowers,
             (extractedCount) => {
-              chrome.runtime.sendMessage({
-                action: "updateProgress",
-                data: { current: extractedCount, total: totalFollowerCount }
-              }, (response) => {
-                debug("✅ Background response to updateProgress:", response);
-              });
-              debug(`📊 Progress update sent: ${extractedCount} / ${totalFollowerCount}`);
+              // Only send progress updates if extraction is active.
+              if (!window.extractionPaused) {
+                chrome.runtime.sendMessage({
+                  action: "updateProgress",
+                  data: { current: extractedCount, total: totalFollowerCount }
+                }, (response) => {
+                  debug("✅ Background response to updateProgress:", response);
+                });
+                debug(`📊 Progress update sent: ${extractedCount} / ${totalFollowerCount}`);
+              }
             },
             totalFollowerCount
           );
@@ -187,6 +196,12 @@ import { debug, info, warn, error } from '../utils/logger.js';
         } else {
           debug("Resume requested but extraction not paused.");
         }
+      } else if (message.action === "stopExtraction") {
+        debug("Action 'stopExtraction' received.");
+        window.extractionPaused = true;
+        debug("Extraction stopped via stopExtraction message.");
+        sendResponse({ status: "extraction stopped" });
+        return true;
       }
     } catch (err) {
       error("Error in content script message listener:", err);
