@@ -146,6 +146,7 @@ export default {
             this.showConfirmInput = false;
             this.confirmInput = "";
             this.resetButtonText = "End/Reset";
+            this.isPaused = false;
           });
         } else {
           // If the input is not exactly "Reset", show an error message.
