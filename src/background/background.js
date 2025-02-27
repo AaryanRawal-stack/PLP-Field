@@ -120,61 +120,64 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     exportCSV: (message, sendResponse) => {
       debug("📤 Handling 'exportCSV' action...");
-  
-      chrome.storage.local.get(["exportedFollowers"], (result) => {
-          if (chrome.runtime.lastError) {
-              error("❌ Failed to retrieve followers:", chrome.runtime.lastError);
-              sendResponse({ code: 500, data: { error: chrome.runtime.lastError.message } });
-              return;
-          }
-  
-          const followers = result.exportedFollowers || [];
-          debug("📦 exportCSV - Retrieved followers from storage:", followers.length);
-  
-          if (!followers.length) {
-              error("⚠️ No followers to export.");
-              sendResponse({ code: 400, data: { error: "No followers to export." } });
-              return;
-          }
-  
-          let csvContent = "Username,Account Link,Public Status\n";
-          followers.forEach(f => {
-              const publicStatus = f.isPrivate ? "private" : "public";
-              csvContent += `${f.username},https://www.instagram.com/${f.username}/,${publicStatus}\n`;
-          });
-  
-          try {
-              const blob = new Blob([csvContent], { type: "text/csv" });
-              const reader = new FileReader();
-  
-              reader.onloadend = function () {
-                  const url = reader.result; // Base64 encoded CSV file
-  
-                  chrome.downloads.download({
-                      url: url,
-                      filename: "followers.csv",
-                      saveAs: true
-                  }, (downloadId) => {
-                      if (chrome.runtime.lastError) {
-                          error("❌ Download failed:", chrome.runtime.lastError);
-                          sendResponse({ code: 500, data: { error: chrome.runtime.lastError.message } });
-                          return;
-                      }
-  
-                      debug("✅ CSV file download initiated. Download ID:", downloadId);
-                      sendResponse({ code: 200, data: { export_status: "success", downloadId: downloadId } });
-                  });
-              };
-  
-              reader.readAsDataURL(blob);
-          } catch (err) {
-              error("❌ Failed to create CSV file:", err);
-              sendResponse({ code: 500, data: { error: err.message } });
-          }
+    
+      chrome.storage.local.get(["exportedFollowers", "currentTargetAccount"], (result) => {
+        if (chrome.runtime.lastError) {
+          error("❌ Failed to retrieve followers:", chrome.runtime.lastError);
+          sendResponse({ code: 500, data: { error: chrome.runtime.lastError.message } });
+          return;
+        }
+    
+        const followers = result.exportedFollowers || [];
+        const parentAccount = result.currentTargetAccount || "unknown";
+        debug("📦 exportCSV - Retrieved followers from storage:", followers.length);
+    
+        if (!followers.length) {
+          error("⚠️ No followers to export.");
+          sendResponse({ code: 400, data: { error: "No followers to export." } });
+          return;
+        }
+    
+        // Create CSV header with an extra "Parent Account" column
+        let csvContent = "Username,Account Link,Public Status,Parent Account\n";
+        followers.forEach(f => {
+          const publicStatus = f.isPrivate ? "private" : "public";
+          csvContent += `${f.username},https://www.instagram.com/${f.username}/,${publicStatus},${parentAccount}\n`;
+        });
+    
+        try {
+          const blob = new Blob([csvContent], { type: "text/csv" });
+          const reader = new FileReader();
+    
+          reader.onloadend = function () {
+            const url = reader.result; // Base64 encoded CSV file
+    
+            chrome.downloads.download({
+              url: url,
+              // Filename now uses the target account's username
+              filename: `${parentAccount}-exported-followers.csv`,
+              saveAs: true
+            }, (downloadId) => {
+              if (chrome.runtime.lastError) {
+                error("❌ Download failed:", chrome.runtime.lastError);
+                sendResponse({ code: 500, data: { error: chrome.runtime.lastError.message } });
+                return;
+              }
+    
+              debug("✅ CSV file download initiated. Download ID:", downloadId);
+              sendResponse({ code: 200, data: { export_status: "success", downloadId: downloadId } });
+            });
+          };
+    
+          reader.readAsDataURL(blob);
+        } catch (err) {
+          error("❌ Failed to create CSV file:", err);
+          sendResponse({ code: 500, data: { error: err.message } });
+        }
       });
-  
-      return true; // Ensure async sendResponse works
-  },  
+    
+      return true;
+    },    
 
     export_followers: (message, sendResponse) => {
       debug("📩 Received 'export_followers' message from content script.");
