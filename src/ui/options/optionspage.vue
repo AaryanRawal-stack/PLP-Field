@@ -186,6 +186,21 @@ export default {
       sendResponse({ status: "message received" });
       return true;
     });
+
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "local") {
+    if (changes.exportedFollowers) {
+      const newFollowers = changes.exportedFollowers.newValue || [];
+      this.$store.commit('setFollowers', newFollowers);
+      this.$store.commit('setFoundProfiles', newFollowers.length);
+      debug("[OptionsPage] Updated followers from storage change:", newFollowers.length);
+    }
+    if (changes.currentTargetAccount) {
+      this.currentTargetAccount = changes.currentTargetAccount.newValue || "";
+      debug("[OptionsPage] Updated currentTargetAccount from storage change:", this.currentTargetAccount);
+    }
+  }
+});
   }
 };
 </script>
