@@ -101,13 +101,15 @@ export default {
     },
     startExtraction() {
       debug("[OptionsPage] Start Extraction button clicked.");
-      chrome.runtime.sendMessage({ action: "startExtraction" }, (response) => {
-        if (chrome.runtime.lastError) {
-          error("[OptionsPage] Start Extraction request failed:", chrome.runtime.lastError);
-        } else {
-          debug("[OptionsPage] Start Extraction request sent successfully. Response:", response);
-        }
-      });
+      chrome.runtime.sendMessage({ action: "startExtraction", payload: { account: this.newUsername } }, (response) => {
+       if (chrome.runtime.lastError) {
+        error("[OptionsPage] Start Extraction request failed:", chrome.runtime.lastError);
+    }   else {
+      debug("[OptionsPage] Start Extraction request sent successfully. Response:", response);
+      // Force a reload of the options page after a successful extraction start.
+      window.location.reload();
+     }
+     });
     },
     exportCsvData() {
       debug("[OptionsPage] Export CSV button clicked.");
