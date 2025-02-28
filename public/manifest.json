@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Chrome Extension – Free Mode (Vue-Based)",
+  "name": "Pride Liberation Instagram Export",
   "version": "1.0.0",
   "description": "Chrome extension for free mode Instagram follower extraction",
   "action": {
